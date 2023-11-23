@@ -4,6 +4,7 @@ import {
   FrameShapeUtil,
   getSvgAsImage,
   HTMLContainer,
+  TLArrowShape,
   TLEventMapHandler,
   TLFrameShape,
   TLShape,
@@ -12,9 +13,7 @@ import {
 
 import { blobToDataUri } from "@/utils/blob";
 import { debounce } from "@/utils/debounce";
-import * as fal from "@fal-ai/serverless-client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import result from "postcss/lib/result";
 
 // See https://www.fal.ai/models/latent-consistency-sd
 
@@ -86,6 +85,7 @@ export class LiveImageShapeUtil extends FrameShapeUtil {
           // console.log("WebSocket Message:", data);
           if (data.images && data.images.length > 0) {
             setImage(data.images[0].url);
+            this.updateTargets(shape);
           }
         } catch (e) {
           console.error("Error parsing the WebSocket response:", e);
@@ -139,9 +139,9 @@ export class LiveImageShapeUtil extends FrameShapeUtil {
 
         const iteration = startedIteration.current++;
 
-        const shapes = Array.from(editor.getShapeAndDescendantIds([shape.id]))
-          .filter((id) => id !== shape.id)
-          .map((id) => editor.getShape(id)) as TLShape[];
+        const shapes = Array.from(
+          editor.getShapeAndDescendantIds([shape.id])
+        ).map((id) => editor.getShape(id)) as TLShape[];
 
         // Check if should submit request
         const shapesDigest = JSON.stringify(shapes);
@@ -150,7 +150,9 @@ export class LiveImageShapeUtil extends FrameShapeUtil {
         }
         imageDigest.current = shapesDigest;
 
-        const svg = await editor.getSvg(shapes, { background: true });
+        const children = shapes.filter((s) => s.id !== shape.id);
+
+        const svg = await editor.getSvg(children, { background: true });
         if (iteration <= finishedIteration.current) return;
 
         if (!svg) {
@@ -236,7 +238,7 @@ export class LiveImageShapeUtil extends FrameShapeUtil {
         >
           {component}
 
-          {image && (
+          {/* {image && (
             <img
               src={image}
               alt=""
@@ -249,9 +251,80 @@ export class LiveImageShapeUtil extends FrameShapeUtil {
                 height: shape.props.h,
               }}
             />
-          )}
+          )} */}
         </div>
       </HTMLContainer>
     );
+  }
+
+  updateTargets(shape: TLFrameShape) {
+    const outboundArrows = this.getOutboundArrows(shape);
+    for (const arrow of outboundArrows) {
+      const boundShapeId =
+        arrow.props.end.type === "binding" && arrow.props.end.boundShapeId;
+
+      if (!boundShapeId) {
+        return this.createTarget(shape, arrow);
+      }
+
+      const target = this.editor.getShape(boundShapeId);
+      if (!target) {
+        return this.createTarget(shape, arrow);
+      }
+
+      if (target.type === "live-image") {
+        return this.updateTarget(shape, target as TLFrameShape);
+      }
+    }
+  }
+
+  updateTarget(shape: TLFrameShape, target: TLFrameShape) {
+    const { editor } = this;
+    const sourceShape = editor.getShape<TLFrameShape>(shape.id);
+    if (!sourceShape) {
+      return;
+    }
+    editor.updateShape({
+      id: target.id,
+      type: "live-image",
+      props: {
+        w: sourceShape.props.w,
+        h: sourceShape.props.h,
+      },
+    });
+  }
+
+  createTarget(shape: TLFrameShape, arrow: TLArrowShape) {
+    if (arrow.props.end.type !== "point") {
+      throw new Error("Expected arrow end to be a point");
+    }
+    const pageTransform = this.editor.getShapePageTransform(arrow.id)!;
+    const pointInPageSpace = pageTransform.applyToPoint(arrow.props.end);
+    const target = this.editor.createShape({
+      type: "frame",
+      x: pointInPageSpace.x,
+      y: pointInPageSpace.y,
+      props: {
+        w: shape.props.w,
+        h: shape.props.h,
+        name: shape.props.name,
+      },
+    });
+
+    return target;
+  }
+
+  getOutboundArrows(shape: TLFrameShape) {
+    const { editor } = this;
+    const arrows = editor
+      .getCurrentPageShapes()
+      .filter((s) => s.type === "arrow") as TLArrowShape[];
+
+    const outboundArrows = arrows
+      .filter((s) => s.props.start.type === "binding")
+      // @ts-expect-error: filter pls do your job
+      .filter((s) => s.props.start.boundShapeId === shape.id);
+
+    return outboundArrows;
   }
 }

@@ -1,10 +1,8 @@
 "use client";
 
-import { LiveImageShapeUtil } from "@/components/live-image";
 import * as fal from "@fal-ai/serverless-client";
-import { Editor, FrameShapeTool, Tldraw, useEditor } from "@tldraw/tldraw";
+import { Editor, Tldraw, useEditor } from "@tldraw/tldraw";
 import { useCallback } from "react";
-import { LiveImageTool, MakeLiveButton } from "../components/LiveImageTool";
 
 fal.config({
   requestMiddleware: fal.withProxy({
@@ -12,22 +10,16 @@ fal.config({
   }),
 });
 
-const shapeUtils = [LiveImageShapeUtil];
-const tools = [LiveImageTool];
-
 export default function Home() {
   const onEditorMount = (editor: Editor) => {
-    // If there isn't a live image shape, create one
-    const liveImage = editor.getCurrentPageShapes().find((shape) => {
-      return shape.type === "live-image";
-    });
+    const frame = editor
+      .getCurrentPageShapes()
+      .find((shape) => shape.type === "frame");
 
-    if (liveImage) {
-      return;
-    }
+    if (frame) return;
 
     editor.createShape({
-      type: "live-image",
+      type: "frame",
       x: 120,
       y: 180,
       props: {
@@ -42,13 +34,30 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-between">
       <div className="fixed inset-0">
         <Tldraw
-          persistenceKey="tldraw-fal"
+          persistenceKey="draw-fast"
           onMount={onEditorMount}
-          shapeUtils={shapeUtils}
-          tools={tools}
-          shareZone={<MakeLiveButton />}
+          shareZone={<DrawFastButton />}
         />
       </div>
     </main>
+  );
+}
+
+export function DrawFastButton() {
+  const editor = useEditor();
+  const makeLive = useCallback(() => {
+    editor.setCurrentTool("frame");
+  }, [editor]);
+
+  return (
+    <button
+      onClick={makeLive}
+      className="p-2"
+      style={{ cursor: "pointer", zIndex: 100000, pointerEvents: "all" }}
+    >
+      <div className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+        Draw Fast
+      </div>
+    </button>
   );
 }
