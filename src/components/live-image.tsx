@@ -7,6 +7,8 @@ import {
   getSvgAsImage,
   HTMLContainer,
   SelectionEdge,
+  T,
+  TLArrowShape,
   TLEventMapHandler,
   TLFrameShape,
   TLShape,
@@ -52,7 +54,7 @@ export class LiveImageShapeUtil extends FrameShapeUtil {
     return {
       w: 512,
       h: 512,
-      name: "a city skyline",
+      name: "",
     };
   }
 
@@ -105,7 +107,19 @@ export class LiveImageShapeUtil extends FrameShapeUtil {
           const data = JSON.parse(message.data);
           // console.log("WebSocket Message:", data);
           if (data.images && data.images.length > 0) {
-            setImage(data.images[0].url);
+            const targetShape = editor.getShape(data.request_id);
+            console.log(data);
+            if (targetShape) {
+              editor.updateShape({
+                id: targetShape.id,
+                type: "live-image",
+                props: {
+                  w: data.images[0].width / 2,
+                  h: data.images[0].height / 2,
+                  name: data.images[0].url,
+                },
+              });
+            }
           }
         } catch (e) {
           console.error("Error parsing the WebSocket response:", e);
@@ -192,22 +206,24 @@ export class LiveImageShapeUtil extends FrameShapeUtil {
           return;
         }
 
-        const prompt =
-          editor.getShape<TLFrameShape>(shape.id)?.props.name ?? "";
         const imageDataUri = await blobToDataUri(image);
 
-        const request = {
-          image_url: imageDataUri,
-          prompt,
-          sync_mode: true,
-          strength: 0.7,
-          seed: 42, // TODO make this configurable in the UI
-          enable_safety_checks: false,
-        };
-
-        sendCurrentData(JSON.stringify(request));
-
         if (iteration <= finishedIteration.current) return;
+
+        const targetings = this.getTargetings(shape);
+        for (const targeting of targetings) {
+          const request = {
+            image_url: imageDataUri,
+            prompt: targeting.arrow.props.text,
+            sync_mode: true,
+            strength: 0.7,
+            seed: 42,
+            enable_safety_checks: false,
+            request_id: targeting.target.id,
+          };
+
+          sendMessage(JSON.stringify(request));
+        }
 
         // const result = await fal.run<Input, Output>(LatentConsistency, {
         //   input: {
@@ -259,15 +275,15 @@ export class LiveImageShapeUtil extends FrameShapeUtil {
         >
           {component}
 
-          {image && (
+          {shape.props.name && (
             <img
-              src={image}
+              src={shape.props.name}
               alt=""
               width={shape.props.w}
               height={shape.props.h}
               style={{
                 position: "relative",
-                left: shape.props.w,
+                // left: shape.props.w,
                 width: shape.props.w,
                 height: shape.props.h,
               }}
@@ -276,5 +292,34 @@ export class LiveImageShapeUtil extends FrameShapeUtil {
         </div>
       </HTMLContainer>
     );
+  }
+
+  getOutboundArrows(shape: TLFrameShape) {
+    const { editor } = this;
+    return editor.getCurrentPageShapes().filter((s) => {
+      if (s.type !== "arrow") return false;
+      const arrow = s as TLArrowShape;
+      return (
+        arrow.props.start.type === "binding" &&
+        arrow.props.start.boundShapeId === shape.id
+      );
+    }) as TLArrowShape[];
+  }
+
+  getTargetings(shape: TLFrameShape) {
+    const { editor } = this;
+    const outboundArrows = this.getOutboundArrows(shape);
+    return outboundArrows
+      .map((arrow) => {
+        if (arrow.props.end.type !== "binding") return null;
+        const target = editor.getShape(arrow.props.end.boundShapeId);
+        if (!target) return null;
+        if (target.type !== "live-image") return null;
+        return {
+          target,
+          arrow,
+        };
+      })
+      .filter((v) => v) as { target: TLFrameShape; arrow: TLArrowShape }[];
   }
 }
