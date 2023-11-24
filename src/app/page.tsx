@@ -2,8 +2,7 @@
 
 import { LiveImageShapeUtil } from "@/components/live-image";
 import * as fal from "@fal-ai/serverless-client";
-import { Editor, FrameShapeTool, Tldraw, useEditor } from "@tldraw/tldraw";
-import { useCallback } from "react";
+import { Editor, Tldraw } from "@tldraw/tldraw";
 import { LiveImageTool, MakeLiveButton } from "../components/LiveImageTool";
 
 fal.config({

@@ -61,18 +61,29 @@ export class LiveImageShapeUtil extends FrameShapeUtil {
   override canUnmount = () => false;
 
   override toSvg(shape: TLFrameShape) {
-    const theme = getDefaultColorTheme({
-      isDarkMode: this.editor.user.getIsDarkMode(),
-    });
-    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    // const theme = getDefaultColorTheme({
+    //   isDarkMode: this.editor.user.getIsDarkMode(),
+    // });
+    // const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
 
-    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    rect.setAttribute("width", shape.props.w.toString());
-    rect.setAttribute("height", shape.props.h.toString());
-    rect.setAttribute("fill", theme.solid);
-    g.appendChild(rect);
+    // const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    // rect.setAttribute("width", shape.props.w.toString());
+    // rect.setAttribute("height", shape.props.h.toString());
+    // rect.setAttribute("fill", theme.solid);
+    // g.appendChild(rect);
 
-    return g;
+    const image = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "image"
+    );
+    image.setAttribute("href", shape.props.name);
+    image.setAttribute("width", shape.props.w.toString());
+    image.setAttribute("height", shape.props.h.toString());
+    image.setAttribute("x", "0");
+    image.setAttribute("y", "0");
+    // g.appendChild(image);
+
+    return image;
   }
 
   override component(shape: TLFrameShape) {
@@ -107,15 +118,16 @@ export class LiveImageShapeUtil extends FrameShapeUtil {
           const data = JSON.parse(message.data);
           // console.log("WebSocket Message:", data);
           if (data.images && data.images.length > 0) {
-            const targetShape = editor.getShape(data.request_id);
-            console.log(data);
+            const targetShape = editor.getShape<TLFrameShape>(data.request_id);
             if (targetShape) {
               editor.updateShape({
                 id: targetShape.id,
                 type: "live-image",
                 props: {
-                  w: data.images[0].width / 2,
-                  h: data.images[0].height / 2,
+                  // w: data.images[0].width / 2,
+                  // h: data.images[0].height / 2,
+                  w: targetShape.props.w,
+                  h: targetShape.props.h,
                   name: data.images[0].url,
                 },
               });
@@ -184,7 +196,8 @@ export class LiveImageShapeUtil extends FrameShapeUtil {
         }
         imageDigest.current = shapesDigest;
 
-        const svg = await editor.getSvg([shape], {
+        // Bypass hardcoded special case for a single frame
+        const svg = await editor.getSvg([shape, shape], {
           background: true,
           padding: 0,
           darkMode: editor.user.getIsDarkMode(),
@@ -221,6 +234,16 @@ export class LiveImageShapeUtil extends FrameShapeUtil {
             enable_safety_checks: false,
             request_id: targeting.target.id,
           };
+
+          editor.updateShape({
+            id: targeting.target.id,
+            type: "live-image",
+            props: {
+              w: shape.props.w,
+              h: shape.props.h,
+              name: targeting.target.props.name,
+            },
+          });
 
           sendMessage(JSON.stringify(request));
         }
