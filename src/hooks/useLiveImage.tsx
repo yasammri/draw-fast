@@ -60,7 +60,7 @@ export function LiveImageProvider({
 				setCount((count) => count + 1)
 			},
 			onResult: (result) => {
-				console.log(result)
+				// console.log(result)
 				if (result.images && result.images[0]) {
 					const id = result.request_id
 					const request = requestsById.get(id)
@@ -90,7 +90,7 @@ export function LiveImageProvider({
 						},
 						timer,
 					})
-					console.log('send', id, req)
+					// console.log('send', id, req)
 					send({ ...req, request_id: id })
 				})
 			},
@@ -119,7 +119,7 @@ export function useLiveImage(shapeId: TLShapeId) {
 	if (!fetchImage) throw new Error('Missing LiveImageProvider')
 
 	useEffect(() => {
-		console.log('do effect')
+		// console.log('do effect')
 		let prevHash = ''
 		let prevPrompt = ''
 		let prevSvg = ''
@@ -176,10 +176,10 @@ export function useLiveImage(shapeId: TLShapeId) {
 				const imageDataUri = await blobToDataUri(image)
 
 				if (imageDataUri === prevSvg) {
-					console.log('Same image')
+					// console.log('Same image')
 					return
 				} else {
-					console.log({ imageDataUri, prevSvg })
+					// console.log({ imageDataUri, prevSvg })
 				}
 				prevSvg = imageDataUri
 
