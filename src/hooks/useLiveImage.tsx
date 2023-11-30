@@ -113,7 +113,7 @@ export function LiveImageProvider({
 
 export function useLiveImage(
 	shapeId: TLShapeId,
-	{ throttleTime = 100 }: { throttleTime?: number } = {}
+	{ throttleTime = 64 }: { throttleTime?: number } = {}
 ) {
 	const editor = useEditor()
 	const fetchImage = useContext(LiveImageContext)
