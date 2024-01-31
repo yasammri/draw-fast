@@ -2,7 +2,7 @@
 'use client'
 
 import { LiveImageShape, LiveImageShapeUtil } from '@/components/LiveImageShapeUtil'
-import { LiveImageTool,MakeLiveButton } from '@/components/LiveImageTool'
+import { LiveImageTool, MakeLiveButton } from '@/components/LiveImageTool'
 import { LockupLink } from '@/components/LockupLink'
 import { LiveImageProvider } from '@/hooks/useLiveImage'
 import * as fal from '@fal-ai/serverless-client'
@@ -20,9 +20,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 fal.config({
-	requestMiddleware: fal.withProxy({
-		targetUrl: '/api/fal/proxy',
-	}),
+	proxyUrl: '/api/fal/proxy',
 })
 
 const overrides: TLUiOverrides = {
@@ -86,7 +84,7 @@ export default function Home() {
 	}
 
 	return (
-		<LiveImageProvider appId="110602490-lcm-sd15-i2i">
+		<LiveImageProvider>
 			<main className="tldraw-wrapper">
 				<div className="tldraw-wrapper__inner">
 					<Tldraw
