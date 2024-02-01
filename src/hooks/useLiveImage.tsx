@@ -49,7 +49,7 @@ export function LiveImageProvider({ children }: { children: React.ReactNode }) {
 		// >()
 
 		const _connection = fal.realtime.connect<LCMInput, LCMOutput>(
-			'fal-ai/sd-turbo-real-time-high-fps-msgpack',
+			'fal-ai/sd-turbo-real-time-high-fps-msgpack-a10g',
 			{
 				connectionKey: 'draw-faster',
 				throttleInterval: 0,
