@@ -1,14 +1,7 @@
 import { LiveImageShape } from '@/components/LiveImageShapeUtil'
 import * as fal from '@fal-ai/serverless-client'
 import { RealtimeConnection } from '@fal-ai/serverless-client/src/realtime'
-import {
-	AssetRecordType,
-	Editor,
-	TLShape,
-	TLShapeId,
-	getHashForObject,
-	useEditor,
-} from '@tldraw/tldraw'
+import { Editor, TLShape, TLShapeId, getHashForObject, useEditor } from '@tldraw/tldraw'
 import { createContext, useContext, useEffect, useState } from 'react'
 
 type LCMInput = {
@@ -64,7 +57,14 @@ export function LiveImageProvider({ children }: { children: React.ReactNode }) {
 					console.error(error)
 				},
 				onResult: (result) => {
-					console.log(result)
+					if (result.image) {
+						const blob = new Blob([result.image], { type: 'image/jpeg' })
+						const url = URL.createObjectURL(blob)
+						// @ts-expect-error: yolo
+						updateGeneratedImage(window.editor, result.request_id as TLShapeId, url)
+					}
+
+					// console.log(result)
 					// if (result.images && result.images[0]) {
 					// 	const id = result.request_id
 					// 	const request = requestsById.get(id)
@@ -175,21 +175,22 @@ export function useLiveImage(shapeId: TLShapeId) {
 					if (iteration <= finishedIteration) return
 
 					const data = new Uint8Array(buffer)
-					const prompt = frameName ? frameName : 'A person'
+					// const prompt = frameName ? frameName : 'A person'
 
-					// const prompt = frameName
-					// 	? frameName + ' hd award-winning impressive'
-					// 	: 'A random image that is safe for work and not surprising—something boring like a city or shoe watercolor'
+					const prompt = frameName
+						? frameName + ' hd award-winning impressive'
+						: 'A random image that is safe for work and not surprising—something boring like a city or shoe watercolor'
 
 					// downloadDataURLAsFile(imageDataUri, 'image.png')
 					send({
 						prompt,
 						image: data,
-						strength: 0.65,
+						strength: 0.9,
 						seed: 42,
 						enable_safety_checks: false,
 						num_inference_steps: 3,
 						guidance_scale: 1.0,
+						request_id: shapeId,
 					})
 
 					// cancel if stale:
@@ -214,7 +215,7 @@ export function useLiveImage(shapeId: TLShapeId) {
 
 		const interval = setInterval(() => {
 			updateDrawing()
-		}, 16)
+		}, 64)
 		// editor.on('update-drawings' as any, requestUpdate)
 		return () => {
 			clearInterval(interval)
@@ -328,39 +329,53 @@ async function _getSvgAsString(svg: SVGElement) {
 
 function updateGeneratedImage(editor: Editor, shapeId: TLShapeId, url: string | null) {
 	const shape = editor.getShape<LiveImageShape>(shapeId)!
-	const id = AssetRecordType.createId(shape.id.split(':')[1])
 
-	const asset = editor.getAsset(id)
-
-	if (!asset) {
-		editor.createAssets([
-			AssetRecordType.create({
-				id,
-				type: 'image',
-				props: {
-					name: shape.props.name,
-					w: shape.props.w,
-					h: shape.props.h,
-					src: url,
-					isAnimated: false,
-					mimeType: 'image/jpeg',
-				},
-			}),
-		])
-	} else {
-		editor.updateAssets([
-			{
-				...asset,
-				type: 'image',
-				props: {
-					...asset.props,
-					w: shape.props.w,
-					h: shape.props.h,
-					src: url,
-				},
-			},
-		])
+	if (!url) {
+		url = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='
 	}
+
+	editor.updateShape({
+		id: shape.id,
+		type: shape.type,
+		props: {
+			...shape.props,
+			src: url,
+		},
+	})
+
+	// const id = AssetRecordType.createId(shape.id.split(':')[1])
+
+	// const asset = editor.getAsset(id)
+
+	// if (!asset) {
+	// 	editor.createAssets([
+	// 		AssetRecordType.create({
+	// 			id,
+	// 			type: 'image',
+	// 			props: {
+	// 				name: shape.props.name,
+	// 				w: shape.props.w,
+	// 				h: shape.props.h,
+	// 				src: url,
+	// 				isAnimated: false,
+	// 				mimeType: 'image/jpeg',
+	// 			},
+	// 		}),
+	// 	])
+	// } else {
+	// 	editor.updateAssets([
+	// 		{
+	// 			...asset,
+	// 			type: 'image',
+	// 			props: {
+	// 				...asset.props,
+	// 				w: shape.props.w,
+	// 				h: shape.props.h,
+	// 				src: url,
+	// 			},
+	// 		},
+	// 	])
+	// }
 }
 
 function getShapesTouching(shapeId: TLShapeId, editor: Editor) {

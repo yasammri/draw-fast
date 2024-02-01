@@ -7,7 +7,6 @@ import { LockupLink } from '@/components/LockupLink'
 import { LiveImageProvider } from '@/hooks/useLiveImage'
 import * as fal from '@fal-ai/serverless-client'
 import {
-	AssetRecordType,
 	DefaultSizeStyle,
 	Editor,
 	TLUiOverrides,
@@ -144,13 +143,13 @@ const LiveImageAsset = track(function LiveImageAsset({ shape }: { shape: LiveIma
 	if (!shape.props.overlayResult) return null
 
 	const transform = editor.getShapePageTransform(shape).toCssString()
-	const assetId = AssetRecordType.createId(shape.id.split(':')[1])
-	const asset = editor.getAsset(assetId)
+	// const assetId = AssetRecordType.createId(shape.id.split(':')[1])
+	// const asset = editor.getAsset(assetId)
 	return (
-		asset &&
-		asset.props.src && (
+		shape &&
+		shape.props.src && (
 			<img
-				src={asset.props.src!}
+				src={shape.props.src!}
 				alt={shape.props.name}
 				width={shape.props.w}
 				height={shape.props.h}
